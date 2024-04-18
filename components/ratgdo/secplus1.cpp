@@ -64,7 +64,6 @@ namespace ratgdo {
 
         void Secplus1::wall_panel_emulation(size_t index)
         {
-            return;
             if (this->wall_panel_emulation_state_ == WallPanelEmulationState::WAITING) {
                 ESP_LOG1(TAG, "Looking for security+ 1.0 wall panel...");
 
@@ -96,6 +95,7 @@ namespace ratgdo {
                     index += 1;
                     if (index == 18) {
                         index = 15;
+                        this->wall_panel_emulation_state_ = WallPanelEmulationState::WAITING;
                     }
                 }
                 this->scheduler_->set_timeout(this->ratgdo_, "wall_panel_emulation", 250, [=] {
