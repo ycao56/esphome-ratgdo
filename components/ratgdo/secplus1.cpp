@@ -69,6 +69,7 @@ namespace ratgdo {
 
                 if (this->door_state != DoorState::UNKNOWN || this->light_state != LightState::UNKNOWN) {
                     ESP_LOG1(TAG, "Wall panel detected");
+                    this->scheduler_->cancel_timeout(this->ratgdo_, "wall_panel_emulation");
                     return;
                 }
                 if (millis() - this->wall_panel_emulation_start_ > 35000 && !this->wall_panel_starting_) {
@@ -80,7 +81,7 @@ namespace ratgdo {
                 });
                 return;
             } else if (this->wall_panel_emulation_state_ == WallPanelEmulationState::RUNNING) {
-                // ESP_LOG2(TAG, "[Wall panel emulation] Sending byte: [%02X]", secplus1_states[index]);
+                ESP_LOG2(TAG, "[Wall panel emulation] Sending byte: [%02X]", secplus1_states[index]);
 
                 if (index < 15 || !this->do_transmit_if_pending()) {
                     this->transmit_byte(secplus1_states[index]);
@@ -202,6 +203,12 @@ namespace ratgdo {
             if (this->door_state == DoorState::STOPPED || this->door_state == DoorState::OPEN || this->door_state == DoorState::CLOSED) {
                 this->door_moving_ = true;
             }
+        }
+
+        void Secplus1::query_status()
+        {
+            ESP_LOGD(TAG, "Query status...");
+            this->enqueue_transmit(CommandType::QUERY_DOOR_STATUS);
         }
 
         Result Secplus1::call(Args args)

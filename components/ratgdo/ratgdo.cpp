@@ -392,7 +392,7 @@ namespace ratgdo {
 
     void RATGDOComponent::query_status()
     {
-        this->protocol_->call(QueryStatus {});
+        this->protocol_->query_status();
     }
 
     void RATGDOComponent::query_openings()

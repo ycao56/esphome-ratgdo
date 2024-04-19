@@ -102,6 +102,7 @@ namespace ratgdo {
             virtual void dump_config();
 
             virtual void sync();
+            virtual void query_status();
 
             virtual const Traits& traits() const;
 
