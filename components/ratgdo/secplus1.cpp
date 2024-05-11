@@ -228,7 +228,31 @@ namespace ratgdo {
                     uint8_t ser_byte = this->sw_serial_.read();
                     this->last_rx_ = millis();
 
-                    if (ser_byte < 0x30 || ser_byte > 0x3A) {
+                    if (ser_byte < 0x30 || ser_byte > 0x3A) { 
+                        if (ser_byte == 0x55 || ser_byte == 0x52) { // door
+                            ESP_LOGW(TAG, "[%d] Received byte: [%02X]", millis(), ser_byte);
+                            byte_count = 0;
+                            rx_packet[0] = 0x38;
+                            rx_packet[1] = ser_byte;
+                            this->print_rx_packet(rx_packet);
+                            return this->decode_packet(rx_packet);
+                        }
+                        if (ser_byte == 0x5C || ser_byte == 0x58) { // light
+                            ESP_LOGW(TAG, "[%d] Received byte: [%02X]", millis(), ser_byte);
+                            byte_count = 0;
+                            rx_packet[0] = 0x3A;
+                            rx_packet[1] = ser_byte;
+                            this->print_rx_packet(rx_packet);
+                            return this->decode_packet(rx_packet);
+                        }
+                        if (ser_byte == 0x00) { // LOCK
+                            ESP_LOGW(TAG, "[%d] Received byte: [%02X]", millis(), ser_byte);
+                            byte_count = 0;
+                            rx_packet[0] = 0x39;
+                            rx_packet[1] = ser_byte;
+                            this->print_rx_packet(rx_packet);
+                            return this->decode_packet(rx_packet);
+                        }
                         ESP_LOG2(TAG, "[%d] Ignoring byte [%02X], baud: %d", millis(), ser_byte, this->sw_serial_.baudRate());
                         byte_count = 0;
                         continue;
