@@ -96,7 +96,7 @@ namespace ratgdo {
                     index += 1;
                     if (index == 18) {
                         index = 15;
-                        this->wall_panel_emulation_state_ = WallPanelEmulationState::WAITING;
+                        // this->wall_panel_emulation_state_ = WallPanelEmulationState::WAITING;
                     }
                 }
                 this->scheduler_->set_timeout(this->ratgdo_, "wall_panel_emulation", 250, [=] {
@@ -252,6 +252,12 @@ namespace ratgdo {
                             rx_packet[1] = ser_byte;
                             this->print_rx_packet(rx_packet);
                             return this->decode_packet(rx_packet);
+                        }
+                        if (ser_byte == 0xFF) { // wall panel broken
+                            ESP_LOGW(TAG, "[%d] Received byte: [%02X]", millis(), ser_byte);
+                            this->wall_panel_emulation_state_ = WallPanelEmulationState::RUNNING;
+                            this->wall_panel_emulation();
+                            continue;
                         }
                         ESP_LOG2(TAG, "[%d] Ignoring byte [%02X], baud: %d", millis(), ser_byte, this->sw_serial_.baudRate());
                         byte_count = 0;

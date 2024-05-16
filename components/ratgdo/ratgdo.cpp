@@ -51,7 +51,7 @@ namespace ratgdo {
         this->protocol_->setup(this, &App.scheduler, this->input_gdo_pin_, this->output_gdo_pin_);
 
         // many things happening at startup, use some delay for sync
-        set_timeout(SYNC_DELAY, [=] { this->sync(); });
+        // set_timeout(SYNC_DELAY, [=] { this->sync(); });
     }
 
     // initializing protocol, this gets called before setup() because
