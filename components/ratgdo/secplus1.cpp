@@ -47,40 +47,45 @@ namespace ratgdo {
 
         void Secplus1::sync()
         {
-            this->wall_panel_emulation_state_ = WallPanelEmulationState::WAITING;
+            if (this->wall_panel_emulation_state_ == WallPanelEmulationState::WAITING) {
+                this->wall_panel_emulation_state_ = WallPanelEmulationState::RUNNING;
+            } else {
+                this->wall_panel_emulation_state_ = WallPanelEmulationState::WAITING;
+            }
             this->wall_panel_emulation_start_ = millis();
             this->door_state = DoorState::UNKNOWN;
             this->light_state = LightState::UNKNOWN;
             this->scheduler_->cancel_timeout(this->ratgdo_, "wall_panel_emulation");
             this->wall_panel_emulation();
 
-            this->scheduler_->set_timeout(this->ratgdo_, "", 45000, [=] {
-                if (this->door_state == DoorState::UNKNOWN) {
-                    ESP_LOGW(TAG, "Triggering sync failed actions.");
-                    this->ratgdo_->sync_failed = true;
-                }
-            });
+            // this->scheduler_->set_timeout(this->ratgdo_, "", 45000, [=] {
+            //     if (this->door_state == DoorState::UNKNOWN) {
+            //         ESP_LOGW(TAG, "Triggering sync failed actions.");
+            //         this->ratgdo_->sync_failed = true;
+            //     }
+            // });
         }
 
         void Secplus1::wall_panel_emulation(size_t index)
         {
-            if (this->wall_panel_emulation_state_ == WallPanelEmulationState::WAITING) {
-                ESP_LOG1(TAG, "Looking for security+ 1.0 wall panel...");
+            // if (this->wall_panel_emulation_state_ == WallPanelEmulationState::WAITING) {
+            //     ESP_LOG1(TAG, "Looking for security+ 1.0 wall panel...");
 
-                if (this->door_state != DoorState::UNKNOWN || this->light_state != LightState::UNKNOWN) {
-                    ESP_LOG1(TAG, "Wall panel detected");
-                    this->scheduler_->cancel_timeout(this->ratgdo_, "wall_panel_emulation");
-                    return;
-                }
-                if (millis() - this->wall_panel_emulation_start_ > 35000 && !this->wall_panel_starting_) {
-                    ESP_LOG1(TAG, "No wall panel detected. Switching to emulation mode.");
-                    this->wall_panel_emulation_state_ = WallPanelEmulationState::RUNNING;
-                }
-                this->scheduler_->set_timeout(this->ratgdo_, "wall_panel_emulation", 2000, [=] {
-                    this->wall_panel_emulation();
-                });
-                return;
-            } else if (this->wall_panel_emulation_state_ == WallPanelEmulationState::RUNNING) {
+            //     if (this->door_state != DoorState::UNKNOWN || this->light_state != LightState::UNKNOWN) {
+            //         ESP_LOG1(TAG, "Wall panel detected");
+            //         this->scheduler_->cancel_timeout(this->ratgdo_, "wall_panel_emulation");
+            //         return;
+            //     }
+            //     if (millis() - this->wall_panel_emulation_start_ > 35000 && !this->wall_panel_starting_) {
+            //         ESP_LOG1(TAG, "No wall panel detected. Switching to emulation mode.");
+            //         this->wall_panel_emulation_state_ = WallPanelEmulationState::RUNNING;
+            //     }
+            //     this->scheduler_->set_timeout(this->ratgdo_, "wall_panel_emulation", 2000, [=] {
+            //         this->wall_panel_emulation();
+            //     });
+            //     return;
+            // } else if (this->wall_panel_emulation_state_ == WallPanelEmulationState::RUNNING) {
+            if (this->wall_panel_emulation_state_ == WallPanelEmulationState::RUNNING) {
                 ESP_LOG2(TAG, "[Wall panel emulation] Sending byte: [%02X]", secplus1_states[index]);
 
                 if (index < 15 || !this->do_transmit_if_pending()) {
@@ -102,6 +107,9 @@ namespace ratgdo {
                 this->scheduler_->set_timeout(this->ratgdo_, "wall_panel_emulation", 250, [=] {
                     this->wall_panel_emulation(index);
                 });
+            } else {
+                this->scheduler_->cancel_timeout(this->ratgdo_, "wall_panel_emulation");
+                ESP_LOG2(TAG, "[Wall panel emulation] Stopped..");
             }
         }
 
@@ -229,7 +237,7 @@ namespace ratgdo {
                     this->last_rx_ = millis();
 
                     if (ser_byte < 0x30 || ser_byte > 0x3A) { 
-                        if (ser_byte == 0x55 || ser_byte == 0x52) { // door
+                        if (ser_byte == 0x55 /*CLOSED*/|| ser_byte == 0x52 /*OPEN*/ || ser_byte == 0x01 /*OPENING*/ || ser_byte == 0x44 /*CLOSING*/) { // door
                             ESP_LOGW(TAG, "[%d] Received byte: [%02X]", millis(), ser_byte);
                             byte_count = 0;
                             rx_packet[0] = 0x38;
@@ -237,7 +245,7 @@ namespace ratgdo {
                             this->print_rx_packet(rx_packet);
                             return this->decode_packet(rx_packet);
                         }
-                        if (ser_byte == 0x5C || ser_byte == 0x58) { // light
+                        if (ser_byte == 0x5C /*ON*/|| ser_byte == 0x58 /*OFF*/) { // light
                             ESP_LOGW(TAG, "[%d] Received byte: [%02X]", millis(), ser_byte);
                             byte_count = 0;
                             rx_packet[0] = 0x3A;
@@ -253,12 +261,12 @@ namespace ratgdo {
                             this->print_rx_packet(rx_packet);
                             return this->decode_packet(rx_packet);
                         }
-                        if (ser_byte == 0xFF) { // wall panel broken
-                            ESP_LOGW(TAG, "[%d] Received byte: [%02X]", millis(), ser_byte);
-                            this->wall_panel_emulation_state_ = WallPanelEmulationState::RUNNING;
-                            this->wall_panel_emulation();
-                            continue;
-                        }
+                        // if (ser_byte == 0xFF) { // wall panel broken
+                        //     ESP_LOGW(TAG, "[%d] Received byte: [%02X]", millis(), ser_byte);
+                        //     this->wall_panel_emulation_state_ = WallPanelEmulationState::RUNNING;
+                        //     this->wall_panel_emulation();
+                        //     continue;
+                        // }
                         ESP_LOG2(TAG, "[%d] Ignoring byte [%02X], baud: %d", millis(), ser_byte, this->sw_serial_.baudRate());
                         byte_count = 0;
                         continue;
